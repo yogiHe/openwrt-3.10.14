@@ -13,7 +13,7 @@ include $(INCLUDE_DIR)/host-build.mk
 PKG_NAME:=Build dependency
 
 define Require/non-root
-	[ "$$(shell whoami)" != "root" ]
+#	[ "$$(shell whoami)" != "root" ]
 endef
 $(eval $(call Require,non-root, \
 	Please do not compile as root. \
