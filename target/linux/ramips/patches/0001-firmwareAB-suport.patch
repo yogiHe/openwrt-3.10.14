@@ -1,0 +1,89 @@
+Index: linux-3.10.14-p112871/drivers/mtd/mtdpart.c
+===================================================================
+--- linux-3.10.14-p112871.orig/drivers/mtd/mtdpart.c
++++ linux-3.10.14-p112871/drivers/mtd/mtdpart.c
+@@ -891,6 +891,18 @@ static void split_rootfs_data(struct mtd
+ 
+ #define UBOOT_MAGIC	0x27051956
+ 
++#ifdef CONFIG_MTD_SPLIT_FIRMWARE_A_NAME
++#define SPLIT_FIRMWARE_A_NAME   CONFIG_MTD_SPLIT_FIRMWARE_A_NAME
++#else
++#define SPLIT_FIRMWARE_A_NAME   "unused"
++#endif
++
++#ifdef CONFIG_MTD_SPLIT_FIRMWARE_B_NAME
++#define SPLIT_FIRMWARE_B_NAME   CONFIG_MTD_SPLIT_FIRMWARE_B_NAME
++#else
++#define SPLIT_FIRMWARE_B_NAME   "unused"
++#endif
++
+ static void split_uimage(struct mtd_info *master, struct mtd_part *part)
+ {
+ 	struct {
+@@ -913,16 +925,20 @@ static void split_uimage(struct mtd_info
+ 		len = be32_to_cpu(hdr.kern_size);
+ 	else
+ 		len = be32_to_cpu(hdr.size) + 0x40;
+-
++/*
+ 	__mtd_add_partition(master, "rootfs", part->offset + len,
+ 			    part->mtd.size - len, false);
++*/
++	if (!strcmp(part->mtd.name, SPLIT_FIRMWARE_A_NAME)) {
++		__mtd_add_partition(master, "rootfsA", part->offset + len,
++				part->mtd.size - len, false);
++	} else if (!strcmp(part->mtd.name, SPLIT_FIRMWARE_B_NAME)) {
++		__mtd_add_partition(master, "rootfsB", part->offset + len,
++				part->mtd.size - len, false);
++	}
++
+ }
+ 
+-#ifdef CONFIG_MTD_SPLIT_FIRMWARE_NAME
+-#define SPLIT_FIRMWARE_NAME	CONFIG_MTD_SPLIT_FIRMWARE_NAME
+-#else
+-#define SPLIT_FIRMWARE_NAME	"unused"
+-#endif
+ 
+ static void split_firmware(struct mtd_info *master, struct mtd_part *part)
+ {
+@@ -954,10 +970,18 @@ static void mtd_partition_split(struct m
+ 		if (config_enabled(CONFIG_MTD_ROOTFS_SPLIT))
+ 			split_rootfs_data(master, part);
+ 	}
+-
++/*
+ 	if (!strcmp(part->mtd.name, SPLIT_FIRMWARE_NAME) &&
+ 	    config_enabled(CONFIG_MTD_SPLIT_FIRMWARE))
+ 		split_firmware(master, part);
++*/
++	if (!strcmp(part->mtd.name, SPLIT_FIRMWARE_A_NAME) &&
++	    config_enabled(CONFIG_MTD_SPLIT_FIRMWARE))
++		split_firmware(master, part);
++
++        if (!strcmp(part->mtd.name, SPLIT_FIRMWARE_B_NAME) &&
++            config_enabled(CONFIG_MTD_SPLIT_FIRMWARE))
++                split_firmware(master, part);
+ 
+ 	arch_split_mtd_part(master, part->mtd.name, part->offset,
+ 			    part->mtd.size);
+Index: linux-3.10.14-p112871/drivers/mtd/Kconfig
+===================================================================
+--- linux-3.10.14-p112871.orig/drivers/mtd/Kconfig
++++ linux-3.10.14-p112871/drivers/mtd/Kconfig
+@@ -30,7 +30,13 @@ config MTD_SPLIT_FIRMWARE
+ config MTD_SPLIT_FIRMWARE_NAME
+         string "Firmware partition name"
+         depends on MTD_SPLIT_FIRMWARE
+-        default "firmware"
++        default "firmwareA"
++        default n
++
++config MTD_SPLIT_FIRMWARE_NAME
++        string "Firmware partition name"
++        depends on MTD_SPLIT_FIRMWARE
++        default "firmwareB"
+         default n
+ 
+ config MTD_UIMAGE_SPLIT
