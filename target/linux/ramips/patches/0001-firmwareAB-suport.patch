@@ -72,18 +72,48 @@ Index: linux-3.10.14-p112871/drivers/mtd/Kconfig
 ===================================================================
 --- linux-3.10.14-p112871.orig/drivers/mtd/Kconfig
 +++ linux-3.10.14-p112871/drivers/mtd/Kconfig
-@@ -30,7 +30,13 @@ config MTD_SPLIT_FIRMWARE
- config MTD_SPLIT_FIRMWARE_NAME
+@@ -27,10 +27,16 @@ config MTD_SPLIT_FIRMWARE
+         bool "Automatically split firmware partition for kernel+rootfs"
+         default n
+ 
+-config MTD_SPLIT_FIRMWARE_NAME
++config MTD_SPLIT_FIRMWARE_A_NAME
          string "Firmware partition name"
          depends on MTD_SPLIT_FIRMWARE
 -        default "firmware"
 +        default "firmwareA"
 +        default n
 +
-+config MTD_SPLIT_FIRMWARE_NAME
++config MTD_SPLIT_FIRMWARE_B_NAME
 +        string "Firmware partition name"
 +        depends on MTD_SPLIT_FIRMWARE
 +        default "firmwareB"
          default n
  
  config MTD_UIMAGE_SPLIT
+Index: linux-3.10.14-p112871/drivers/mtd/ralink/ralink_bbu_spi.c
+===================================================================
+--- linux-3.10.14-p112871.orig/drivers/mtd/ralink/ralink_bbu_spi.c
++++ linux-3.10.14-p112871/drivers/mtd/ralink/ralink_bbu_spi.c
+@@ -63,8 +63,20 @@ static struct mtd_partition rt2880_parti
+ 				name:		 "Factory",
+ 				size:		 0x10000,
+ 				offset:		 MTDPART_OFS_APPEND
++	},  {
++				name:		 "firmwareA",
++				size:		 0x600000,
++				offset:		 MTDPART_OFS_APPEND
++	}, {
++				name:		 "firmwareB",
++				size:		 0x600000,
++				offset:          MTDPART_OFS_APPEND
++	}, {
++				name:		 "rootfs_data",
++				size:		 0x380000,
++				offset:		 MTDPART_OFS_APPEND
+ 	}, {
+-				name:		 "firmware",
++				name:		 "Misc",
+ 				size:		 MTDPART_SIZ_FULL,
+ 				offset:		 MTDPART_OFS_APPEND
+ 	}
