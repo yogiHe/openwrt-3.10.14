@@ -23,7 +23,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
   SECTION:=application
   CATEGORY:=application
-  DEPENDS:=+lib-files
+#  DEPENDS:=+lib-files
   TITLE:=wifi_connect --config wifi file
 endef
 
