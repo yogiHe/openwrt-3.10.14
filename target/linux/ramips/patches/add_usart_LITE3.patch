@@ -1,0 +1,86 @@
+Index: linux-3.10.14-p112871/arch/mips/ralink/init.c
+===================================================================
+--- linux-3.10.14-p112871.orig/arch/mips/ralink/init.c
++++ linux-3.10.14-p112871/arch/mips/ralink/init.c
+@@ -635,7 +635,7 @@ void prom_init_sysclk(void)
+ ** To get the correct baud_base value, prom_init_sysclk() must be called before
+ ** this function is called.
+ */
+-static struct uart_port serial_req[2];
++static struct uart_port serial_req[3];
+ __init int prom_init_serial_port(void)
+ {
+ 
+@@ -687,8 +687,31 @@ __init int prom_init_serial_port(void)
+   serial_req[1].mapbase    = RALINK_UART_LITE_BASE;
+   serial_req[1].membase    = ioremap_nocache(RALINK_UART_LITE_BASE, PAGE_SIZE);
+ 
++
++  serial_req[2].type       = PORT_16550A;
++  serial_req[2].line       = 2;
++  serial_req[2].irq        = SURFBOARDINT_UART_LITE3;
++  serial_req[2].flags      = UPF_FIXED_TYPE;
++#if defined (CONFIG_RALINK_RT3883) || defined (CONFIG_RALINK_RT3352) ||  defined (CONFIG_RALINK_RT5350) || defined (CONFIG_RALINK_RT6855) || defined (CONFIG_RALINK_MT7620) || defined (CONFIG_RALINK_MT7628)
++  serial_req[2].uartclk    = 40000000;
++#elif defined (CONFIG_RALINK_MT7621)
++  serial_req[2].uartclk    = 50000000;
++#else
++  serial_req[2].uartclk    = surfboard_sysclk;
++#endif
++
++#if defined (CONFIG_RALINK_MT7621) || defined (CONFIG_RALINK_MT7628)
++  serial_req[2].iotype     = UPIO_MEM32;
++#else
++  serial_req[2].iotype     = UPIO_AU;
++#endif
++  serial_req[2].regshift   = 2;
++  serial_req[2].mapbase    = RALINK_UART_LITE3_BASE;
++  serial_req[2].membase    = ioremap_nocache(RALINK_UART_LITE3_BASE, PAGE_SIZE);
++
+   early_serial_setup(&serial_req[0]);
+   early_serial_setup(&serial_req[1]);
++  early_serial_setup(&serial_req[2]);
+ 
+   return(0);
+ }
+@@ -743,6 +766,14 @@ static void serial_setbrg(unsigned long
+         DLL(RALINK_SYSCTL_BASE + 0xD00) = clock_divisor & 0xff;
+         DLM(RALINK_SYSCTL_BASE + 0xD00) = clock_divisor >> 8;
+         LCR(RALINK_SYSCTL_BASE + 0xD00) = UART_LCR_WLEN8;
++
++        IER(RALINK_SYSCTL_BASE + 0xE00) = 0;
++        FCR(RALINK_SYSCTL_BASE + 0xE00) = 0;
++        LCR(RALINK_SYSCTL_BASE + 0xE00) = (UART_LCR_WLEN8 | UART_LCR_DLAB);
++        DLL(RALINK_SYSCTL_BASE + 0xE00) = clock_divisor & 0xff;
++        DLM(RALINK_SYSCTL_BASE + 0xE00) = clock_divisor >> 8;
++        LCR(RALINK_SYSCTL_BASE + 0xE00) = UART_LCR_WLEN8;
++
+ #else
+ 	IER(RALINK_SYSCTL_BASE + 0x500) = 0;
+         FCR(RALINK_SYSCTL_BASE + 0x500) = 0;
+Index: linux-3.10.14-p112871/drivers/char/ralink_gpio.c
+===================================================================
+--- linux-3.10.14-p112871.orig/drivers/char/ralink_gpio.c
++++ linux-3.10.14-p112871/drivers/char/ralink_gpio.c
+@@ -2492,6 +2492,7 @@ int __init ralink_gpio_init(void)
+ 	gpiomode &= ~0x2000;  //clear bit[13] WLAN_LED
+ #endif
+ 	gpiomode |= RALINK_GPIOMODE_DFT;
++	gpiomode &=~(0x03<<26);
+ 	*(volatile u32 *)(RALINK_REG_GPIOMODE) = cpu_to_le32(gpiomode);
+ 
+ 	//enable gpio interrupt
+Index: linux-3.10.14-p112871/drivers/char/ralink_gpio.h
+===================================================================
+--- linux-3.10.14-p112871.orig/drivers/char/ralink_gpio.h
++++ linux-3.10.14-p112871/drivers/char/ralink_gpio.h
+@@ -505,7 +505,8 @@
+ #elif defined (CONFIG_RALINK_MT7620)
+ #define RALINK_GPIOMODE_DFT		(RALINK_GPIOMODE_I2C)
+ #elif defined (CONFIG_RALINK_MT7628)
+-#define RALINK_GPIOMODE_DFT		(RALINK_GPIOMODE_UART2 | RALINK_GPIOMODE_UART3) | (RALINK_GPIOMODE_SPI_CS1) | (RALINK_GPIOMODE_WDT) 
++//#define RALINK_GPIOMODE_DFT		(RALINK_GPIOMODE_UART2 | RALINK_GPIOMODE_UART3) | (RALINK_GPIOMODE_SPI_CS1) | (RALINK_GPIOMODE_WDT) 
++#define RALINK_GPIOMODE_DFT           (RALINK_GPIOMODE_SPI_CS1) | (RALINK_GPIOMODE_WDT)
+ #else
+ #define RALINK_GPIOMODE_DFT             (RALINK_GPIOMODE_UARTF)
+ #endif
